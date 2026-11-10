@@ -1,0 +1,44 @@
+[project]
+name = "clipstream"
+version = "0.6.1"
+description = "Generador local de clips verticales para TikTok, Reels, Facebook y Shorts"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "fastapi>=0.115",          # MIT
+    "uvicorn[standard]>=0.30", # BSD-3
+    "huey>=2.5",               # MIT
+    "pydantic>=2.8",           # MIT
+    "pydantic-settings>=2.4",  # MIT
+    "httpx>=0.27",             # BSD-3
+    "numpy>=1.26",             # BSD-3
+    "yt-dlp>=2024.10",         # Unlicense
+    "streamlink>=6.11",        # BSD-2
+    "faster-whisper>=1.1",     # MIT
+    "pywebview>=5.3",          # BSD-3
+    "mediapipe>=0.10.14",      # Apache-2.0 (caras, pose y personas para el reencuadre)
+    "nvidia-ml-py>=12.560",    # BSD-3 (lectura VRAM)
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.3", "pytest-asyncio>=0.24"]
+# Microseries (desactivadas por defecto). kokoro-onnx usa phonemizer/espeak-ng (GPL-3.0).
+# torch con CUDA: pip install torch==2.11.0+cu128 --index-url https://download.pytorch.org/whl/cu128
+stories = [
+    "kokoro-onnx>=0.4",        # MIT
+    "torch>=2.7",              # BSD-3
+    "diffusers>=0.42",         # Apache-2.0
+    "transformers>=5.0",       # Apache-2.0
+    "accelerate>=1.10",        # Apache-2.0
+    "peft>=0.17",              # Apache-2.0 (LoRA de SDXL-Lightning)
+]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*", "config*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_default_fixture_loop_scope = "function"

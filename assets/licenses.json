@@ -1,0 +1,127 @@
+{
+  "_comment": "Registro de licencia por archivo de assets/. Un archivo sin entrada o con licencia fuera de ALLOWED_LICENSES no se usa.",
+  "files": {
+    "fonts/Montserrat-ExtraBold.ttf": {
+      "license": "OFL",
+      "source": "https://github.com/JulietaUla/Montserrat",
+      "author": "The Montserrat Project Authors"
+    },
+    "fonts/Montserrat-Black.ttf": {
+      "license": "OFL",
+      "source": "https://github.com/JulietaUla/Montserrat",
+      "author": "The Montserrat Project Authors"
+    },
+    "sfx/whoosh.wav": {
+      "license": "CC0",
+      "title": "Whoosh",
+      "author": "ClipStream (generado por código)",
+      "source": "app/shared/sfx/synth.py"
+    },
+    "sfx/swipe.wav": {
+      "license": "CC0",
+      "title": "Barrido corto",
+      "author": "ClipStream (generado por código)",
+      "source": "app/shared/sfx/synth.py"
+    },
+    "sfx/pop.wav": {
+      "license": "CC0",
+      "title": "Pop",
+      "author": "ClipStream (generado por código)",
+      "source": "app/shared/sfx/synth.py"
+    },
+    "sfx/ding.wav": {
+      "license": "CC0",
+      "title": "Ding",
+      "author": "ClipStream (generado por código)",
+      "source": "app/shared/sfx/synth.py"
+    },
+    "sfx/boom.wav": {
+      "license": "CC0",
+      "title": "Impacto grave",
+      "author": "ClipStream (generado por código)",
+      "source": "app/shared/sfx/synth.py"
+    },
+    "sfx/riser.wav": {
+      "license": "CC0",
+      "title": "Subida",
+      "author": "ClipStream (generado por código)",
+      "source": "app/shared/sfx/synth.py"
+    },
+    "texts/rv1909.json": {
+      "license": "Public-Domain",
+      "title": "Santa Biblia, Reina-Valera 1909",
+      "author": "Casiodoro de Reina, Cipriano de Valera (rev. 1909)",
+      "source": "https://ebible.org/find/details.php?id=spaRV1909"
+    },
+    "texts/rv1909_about.htm": {
+      "license": "Public-Domain",
+      "title": "Ficha de eBible.org",
+      "source": "https://ebible.org"
+    },
+    "music/ambient_solemne.m4a": {
+      "license": "CC0",
+      "title": "Base solemne",
+      "author": "ClipStream (generado por código)",
+      "source": "app/shared/music/ambient.py",
+      "mood": "solemne"
+    },
+    "music/ambient_epico.m4a": {
+      "license": "CC0",
+      "title": "Base épica",
+      "author": "ClipStream (generado por código)",
+      "source": "app/shared/music/ambient.py",
+      "mood": "epico"
+    },
+    "music/ambient_alegre.m4a": {
+      "license": "CC0",
+      "title": "Base alegre",
+      "author": "ClipStream (generado por código)",
+      "source": "app/shared/music/ambient.py",
+      "mood": "alegre"
+    },
+    "music/ambient_misterio.m4a": {
+      "license": "CC0",
+      "title": "Base de misterio",
+      "author": "ClipStream (generado por código)",
+      "source": "app/shared/music/ambient.py",
+      "mood": "misterio"
+    },
+    "music/ambient_telenovela.m4a": {
+      "license": "CC0",
+      "title": "Base de telenovela",
+      "author": "ClipStream (generado por código)",
+      "source": "app/shared/music/ambient.py",
+      "mood": "telenovela"
+    },
+    "sfx/scratch.wav": {
+      "license": "CC0",
+      "title": "Disco rayado",
+      "author": "ClipStream (generado por código)",
+      "source": "app/shared/sfx/synth.py"
+    },
+    "sfx/fail.wav": {
+      "license": "CC0",
+      "title": "Trombón triste",
+      "author": "ClipStream (generado por código)",
+      "source": "app/shared/sfx/synth.py"
+    },
+    "sfx/crickets.wav": {
+      "license": "CC0",
+      "title": "Grillos",
+      "author": "ClipStream (generado por código)",
+      "source": "app/shared/sfx/synth.py"
+    },
+    "sfx/cash.wav": {
+      "license": "CC0",
+      "title": "Caja registradora",
+      "author": "ClipStream (generado por código)",
+      "source": "app/shared/sfx/synth.py"
+    },
+    "sfx/boing.wav": {
+      "license": "CC0",
+      "title": "Muelle",
+      "author": "ClipStream (generado por código)",
+      "source": "app/shared/sfx/synth.py"
+    }
+  }
+}

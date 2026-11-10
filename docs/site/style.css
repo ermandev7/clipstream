@@ -1,0 +1,16 @@
+:root { --bg: #141415; --panel: #1a1a1c; --line: #2c2c2f; --text: #e6e6e7; --muted: #a1a1a6; --accent: #4c8dff; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 "IBM Plex Sans", system-ui, sans-serif; }
+header, footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 14px 20px; background: var(--panel); border-bottom: 1px solid var(--line); }
+footer { border-top: 1px solid var(--line); border-bottom: 0; flex-direction: column; align-items: flex-start; font-size: 14px; color: var(--muted); }
+main { max-width: 760px; margin: 0 auto; padding: 28px 20px 48px; }
+h1 { font-size: 30px; line-height: 1.2; margin: 8px 0 12px; }
+h2 { font-size: 19px; margin: 28px 0 8px; }
+a { color: var(--accent); }
+header a { color: var(--text); text-decoration: none; }
+nav a { color: var(--accent); }
+.lead { font-size: 18px; color: var(--muted); }
+.small { font-size: 13px; color: var(--muted); }
+hr { border: 0; border-top: 1px solid var(--line); margin: 32px 0; }
+li { margin: 6px 0; }
