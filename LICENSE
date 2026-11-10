@@ -19,12 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----------------------------------------------------------------------------
-Aviso (no forma parte de la licencia MIT; resume su cláusula de garantía):
-
-ClipStream se ofrece tal cual. Lo usas bajo tu propia responsabilidad. Tú
-eres responsable del contenido que procesas y publicas: usa solo vídeos tuyos
-o para los que tengas permiso, y respeta los derechos de autor y las normas de
-cada plataforma. Los componentes de terceros conservan sus propias licencias
-(ver installer/THIRD_PARTY.md).
