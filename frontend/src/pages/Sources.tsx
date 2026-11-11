@@ -2,13 +2,20 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ActivityBar, MiniHist } from '../components/Charts'
 import { ClipModal } from '../components/ClipModal'
 import { ProgressSteps } from '../components/ProgressSteps'
+import { LiveVideo } from '../components/LiveVideo'
+import { LogPanel } from '../components/LogPanel'
 import { MonitorResizer, SideResizer } from '../components/Resizers'
 import { ClipStatus } from '../components/RightsBadge'
 import { Segmented } from '../components/Segmented'
 import type { Clip, Source, SourceDetail, SourceKind, StorageReport } from '../lib/api'
-import { api, clock, fileUrl, fmtBytes, getCleanMode, shortDuration, timecode } from '../lib/api'
+import { api, fileUrl, fmtBytes, getCleanMode, shortDuration, timecode } from '../lib/api'
 import { StartCleanDialog, StorageDialog } from '../components/StorageDialogs'
 import { useWs } from '../lib/live'
+import type { TikTokStatus } from '../lib/publish'
+import { publishApi } from '../lib/publish'
+import { BatchDialog } from '../components/BatchDialog'
+
+type Flow = 'manual' | 'auto'
 
 const KIND_LABEL: Record<SourceKind, string> = { live: 'Directo', vod: 'Vídeo publicado', local: 'Archivo local' }
 const BUSY = new Set(['pending', 'downloading', 'analyzing'])
@@ -23,7 +30,20 @@ function upsert<T extends { id: number }>(list: T[], item: T, sortKey?: (x: T) =
   return sortKey ? next.sort((a, b) => sortKey(a) - sortKey(b)) : next
 }
 
-export function SourcesPage({ onOpenClip }: { onOpenClip: (id: number) => void }) {
+export function SourcesPage({ onOpenClip, onGoExport }: { onOpenClip: (id: number) => void; onGoExport?: () => void }) {
+  // Automático: pegas el link y ClipStream analiza, genera los clips y deja preparada la tanda de TikTok
+  // (los mejores primero, N al día). Solo falta aprobarla: TikTok exige revisar cada publicación.
+  const [flow, setFlow] = useState<Flow>(() => {
+    try { return localStorage.getItem('clipstream.flow') === 'auto' ? 'auto' : 'manual' } catch { return 'manual' }
+  })
+  const chooseFlow = (f: Flow) => {
+    setFlow(f)
+    try { localStorage.setItem('clipstream.flow', f) } catch { /* sin almacenamiento */ }
+  }
+  const [tiktok, setTiktok] = useState<TikTokStatus | null>(null)
+  const [batchFor, setBatchFor] = useState<number | null>(null)
+  const lastStatus = useRef<Map<number, string>>(new Map())
+  useEffect(() => { publishApi.status().then(setTiktok).catch(() => {}) }, [])
   const [mode, setMode] = useState<SourceKind>('vod')
   const [platform, setPlatform] = useState('youtube')
   const [url, setUrl] = useState('')
@@ -115,8 +135,9 @@ export function SourcesPage({ onOpenClip }: { onOpenClip: (id: number) => void }
     setAskClean(null)
     setBusy(true)
     try {
-      const body = mode === 'local' ? { kind: mode, path, clean_previous: clean }
-        : { kind: mode, platform, url: url.trim(), clean_previous: clean, ...(mode === 'live' ? { live_every: liveEvery } : {}) }
+      const auto = flow === 'auto'
+      const body = mode === 'local' ? { kind: mode, path, clean_previous: clean, auto_publish: auto }
+        : { kind: mode, platform, url: url.trim(), clean_previous: clean, auto_publish: auto, ...(mode === 'live' ? { live_every: liveEvery } : {}) }
       const src = await api.createSource(body)
       if (clean) await reloadSources()
       setSources((l) => upsert(l, src, (x) => -x.id))
@@ -137,6 +158,15 @@ export function SourcesPage({ onOpenClip }: { onOpenClip: (id: number) => void }
   }
 
   const capturing = detail?.kind === 'live' && detail.status === 'live'
+  const readyCount = detail?.clips.filter((c) => c.status === 'ready').length ?? 0
+  const isAuto = !!detail?.auto_publish
+  // Al terminar un vídeo en modo automático (mientras la app está abierta) se abre la tanda para aprobarla.
+  useEffect(() => {
+    if (!detail) return
+    const prev = lastStatus.current.get(detail.id)
+    lastStatus.current.set(detail.id, detail.status)
+    if (isAuto && prev && prev !== 'done' && detail.status === 'done' && readyCount > 0 && tiktok?.connected) setBatchFor(detail.id)
+  }, [detail, isAuto, readyCount, tiktok?.connected])
   const reprocess = async () => {
     if (!detail) return
     setError(null)
@@ -197,11 +227,26 @@ export function SourcesPage({ onOpenClip }: { onOpenClip: (id: number) => void }
             <button className="btn primary" disabled={!path || busy} onClick={start}>Analizar</button>
           </>
         )}
+        <Segmented<Flow> value={flow} onChange={chooseFlow} options={[
+          { value: 'manual', label: 'Manual' },
+          { value: 'auto', label: 'Automático' },
+        ]} />
         <button className="btn storage-btn" onClick={() => setStorageOpen(true)} title="Cuánto ocupa cada vídeo y borrar los que ya no necesites">
           Espacio{totalBytes != null ? <span className="mono dim"> · {fmtBytes(totalBytes)}</span> : null}
         </button>
       </div>
       {error && <div style={{ padding: '8px 16px 0' }}><div className="notice error">{error}</div></div>}
+      {isAuto && detail && (
+        <div className="auto-banner">
+          <span><b>Automático</b> · {detail.status === 'done' || capturing
+            ? readyCount ? `${readyCount} clips listos. La tanda de TikTok está preparada: solo falta aprobarla.` : 'Sin clips listos todavía.'
+            : 'Analizando y generando clips; al terminar se prepara la tanda de TikTok.'}</span>
+          {readyCount > 0 && (tiktok?.connected
+            ? <button className="btn small primary" onClick={() => setBatchFor(detail.id)}>Revisar y aprobar tanda</button>
+            : <button className="btn small" onClick={onGoExport}>Conectar TikTok en Exportar</button>)}
+        </div>
+      )}
+      {batchFor != null && tiktok && <BatchDialog status={tiktok} sourceId={batchFor} onClose={() => setBatchFor(null)} />}
       {askClean && <StartCleanDialog report={askClean} onChoose={(clean) => doStart(clean)} onCancel={() => setAskClean(null)} />}
       {storageOpen && <StorageDialog currentId={selected} onChanged={reloadSources} onClose={() => setStorageOpen(false)} />}
 
@@ -269,13 +314,7 @@ function MonitorHead({ detail, sources, selected, onSelect, onStop, onReprocess 
 
 function Monitor({ detail }: { detail: SourceDetail | null }) {
   const [tc, setTc] = useState(0)
-  const [tick, setTick] = useState(0)
   const live = detail?.kind === 'live' && detail.status === 'live'
-  useEffect(() => {
-    if (!live) return
-    const t = window.setInterval(() => setTick((x) => x + 1), 5000)
-    return () => window.clearInterval(t)
-  }, [live])
   const hasMedia = detail && detail.kind !== 'live' && detail.path && !['pending', 'downloading'].includes(detail.status)
   return (
     <div className="monitor-wrap">
@@ -283,8 +322,7 @@ function Monitor({ detail }: { detail: SourceDetail | null }) {
         <div className="monitor">
           {hasMedia && <video key={detail.id} src={`/api/sources/${detail.id}/media`} controls preload="metadata"
             onTimeUpdate={(e) => setTc(e.currentTarget.currentTime)} />}
-          {live && <img src={`/api/sources/${detail.id}/frame?t=${tick}`} alt="Último frame del directo"
-            onError={(e) => { e.currentTarget.style.visibility = 'hidden' }} onLoad={(e) => { e.currentTarget.style.visibility = 'visible' }} />}
+          {live && <LiveVideo key={detail.id} sourceId={detail.id} />}
           {!hasMedia && !live && (
             <div className="monitor-empty">
               {detail?.status === 'downloading' ? 'Descargando vídeo…' : detail ? 'Sin vista previa' : 'Monitor'}
@@ -398,25 +436,3 @@ function PermissionPanel({ detail, onChange }: { detail: SourceDetail; onChange:
   )
 }
 
-function LogPanel({ detail }: { detail: SourceDetail | null }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const events = detail?.events ?? []
-  useEffect(() => { ref.current?.scrollTo({ top: ref.current.scrollHeight }) }, [events.length])
-  return (
-    <div className="section" style={{ borderBottom: 0 }}>
-      <div className="section-head"><span className="label">Registro</span></div>
-      <div className="section-body">
-        <div className="log" ref={ref}>
-          {events.length === 0 && <div className="dim">Sin eventos.</div>}
-          {events.map((e, i) => (
-            <div key={e.id ?? `w${i}`} className={`log-row ${e.level}`}>
-              <span className="t">{clock(e.ts)}</span>
-              <span className="m">{e.message}</span>
-            </div>
-          ))}
-        </div>
-        {detail?.error && <div className="notice error" style={{ marginTop: 8 }}>{detail.error}</div>}
-      </div>
-    </div>
-  )
-}

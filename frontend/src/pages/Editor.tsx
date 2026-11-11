@@ -11,7 +11,7 @@ import type { FxMode, SfxMode } from '../lib/api'
 
 const LAYOUT_SHORT: Record<string, string> = {
   follow: 'Seguir cara', facecam: 'Facecam + juego', blur: 'Desenfocado',
-  split2: 'Dividido ×2', split3: 'Dividido ×3', speaker: 'Quien habla',
+  split2: 'Dividido ×2', split3: 'Dividido ×3', speaker: 'Quien habla', react: 'Streamer + vídeo',
 }
 
 const PLATFORM: Record<string, string> = { tiktok: 'TikTok', instagram: 'Reels', facebook: 'Facebook', youtube: 'Shorts' }
@@ -226,10 +226,11 @@ export function EditorPage({ clipId, onNavigate }: Props) {
             </div>
             <div className="section-body">
               <div className="layout-grid">
-                {['follow', 'facecam', 'blur', 'split2', 'split3', 'speaker'].map((id) => (
+                {['follow', 'facecam', 'blur', 'split2', 'split3', 'speaker', 'react'].map((id) => (
                   <button key={id} className={`layout-btn ${shownLayout === id ? 'on' : ''}`} disabled={busy}
                     aria-label={LAYOUT_SHORT[id]} aria-pressed={shownLayout === id}
-                    title={id === 'speaker' ? 'Sigue a quien habla (labios + voz); corta o se desplaza según «Cambio de plano»' : undefined}
+                    title={id === 'speaker' ? 'Sigue a quien habla (labios + voz); corta o se desplaza según «Cambio de plano»'
+                      : id === 'react' ? 'Reacciones: el vídeo que se ve dentro del directo arriba y el streamer abajo' : undefined}
                     onClick={() => setLayout(id)}>
                     {LAYOUT_SHORT[id]}
                   </button>

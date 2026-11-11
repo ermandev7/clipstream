@@ -8,7 +8,6 @@ import { EditorPage } from './pages/Editor'
 import { ExportPage } from './pages/Export'
 import { SourcesPage } from './pages/Sources'
 
-// Microseries (pages/Stories.tsx) desactivadas a petición del usuario: sin pestaña.
 type Tab = 'sources' | 'editor' | 'crop' | 'export'
 const TABS: { id: Tab; label: string; phase?: string }[] = [
   { id: 'sources', label: 'Fuentes' },
@@ -77,7 +76,7 @@ export default function App() {
             : <span>GPU no detectada</span>}
         </div>
       </header>
-      {tab === 'sources' && <SourcesPage onOpenClip={(id) => navigate('editor', id)} />}
+      {tab === 'sources' && <SourcesPage onOpenClip={(id) => navigate('editor', id)} onGoExport={() => navigate('export')} />}
       {tab === 'editor' && <EditorPage clipId={clipId} onNavigate={navigate} />}
       {tab === 'crop' && <CropPage clipId={clipId} onNavigate={navigate} />}
       {tab === 'export' && <ExportPage onOpenClip={(id) => navigate('editor', id)} focusClipId={exportFocus} onFocused={clearExportFocus} />}

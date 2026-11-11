@@ -13,7 +13,6 @@ datas = [
     (str(ROOT / "frontend" / "dist"), "frontend/dist"),
     (str(ROOT / "assets"), "assets"),
     (str(ROOT / "installer" / "THIRD_PARTY.md"), "."),
-    (str(ROOT / "app" / "stories" / "catalog.json"), "app/stories"),  # catálogo de historias de dominio público
 ]
 binaries = []
 hiddenimports = [
@@ -31,27 +30,8 @@ for pkg in ("faster_whisper", "ctranslate2", "mediapipe", "onnxruntime", "stream
     binaries += b
     hiddenimports += h
 
-# Motor de imágenes (PyTorch CUDA + diffusers, ~2,8 GB): se descarga en el primer arranque (app/core/pylib.py).
-# Lo que comparte con la app va ENTERO aquí; lo suyo se excluye (ver installer/runtime_deps.py).
-sys.path.insert(0, str(ROOT / "installer"))
-import runtime_deps  # noqa: E402
-
-runtime_deps.write_manifest()  # versiones exactas del venv -> installer/pylib_manifest.json
-datas.append((str(ROOT / "installer" / "pylib_manifest.json"), "."))
-_, shared_dists = runtime_deps.split()
-for pkg in runtime_deps.shared_packages():
-    d, b, h = collect_all(pkg)
-    datas += d
-    binaries += b
-    hiddenimports += h
-for dist in shared_dists:  # transformers comprueba versiones con importlib.metadata
-    try:
-        datas += copy_metadata(dist)
-    except Exception:  # noqa: BLE001
-        pass
-
-# Biblioteca estándar COMPLETA: PyInstaller solo mete lo que importa la app, y el motor descargado
-# (torch, transformers…) usa módulos que la app no usa (pickletools, cProfile, unittest.mock…).
+# Biblioteca estándar COMPLETA: PyInstaller solo mete lo que detecta, y algunas dependencias (yt-dlp,
+# streamlink) importan módulos por nombre en tiempo de ejecución.
 STDLIB_SKIP = {"tkinter", "turtle", "turtledemo", "idlelib", "test", "lib2to3", "ensurepip", "venv", "pydoc_data",
                "curses", "readline", "tty", "pty", "termios", "posix", "pwd", "grp", "fcntl", "resource", "syslog",
                "crypt", "nis", "spwd", "ossaudiodev", "_curses", "_curses_panel", "antigravity", "this", "__phello__"}
@@ -66,9 +46,9 @@ for mod in sorted(sys.stdlib_module_names):
 
 # Las bibliotecas de NVIDIA (2 GB) se descargan en el primer arranque; no se empaquetan.
 excludes = ["nvidia", "tensorflow", "IPython", "pytest", "tkinter", "PyInstaller",  # matplotlib: lo importa mediapipe
-            *runtime_deps.runtime_packages(),
-            # Voz de las microseries (desactivadas): phonemizer y espeak-ng son GPL-3.0. Fuera del .exe para que la
-            # distribución sea MIT; si se reactivan las microseries, hay que volver a incluirlos y cumplir la GPL.
+            # Paquetes grandes que pueda haber en el entorno de desarrollo y la app no usa (y phonemizer/espeak-ng,
+            # GPL-3.0: el .exe publicado debe quedar libre de GPL).
+            "torch", "torchvision", "torchaudio", "diffusers", "transformers", "accelerate", "peft",
             "kokoro_onnx", "phonemizer", "espeakng_loader"]
 
 a = Analysis(

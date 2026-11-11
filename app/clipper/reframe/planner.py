@@ -7,6 +7,7 @@ Diseños:
   facecam  facecam arriba, juego abajo
   split2   dos personas apiladas
   split3   tres personas apiladas
+  react    vídeo insertado en la emisión arriba (16:9) y el streamer abajo
 """
 from __future__ import annotations
 
@@ -17,12 +18,15 @@ from dataclasses import asdict, dataclass, field
 from app.clipper.reframe.detector import FrameDet
 from app.clipper.reframe.tracker import Track, build_tracks, main_tracks
 
-LAYOUTS = ("follow", "facecam", "blur", "split2", "split3", "group", "speaker")
+LAYOUTS = ("follow", "facecam", "blur", "split2", "split3", "group", "speaker", "react")
 SIMULTANEOUS = 0.35  # fracción de tiempo hablando a la vez a partir de la cual se divide la pantalla
 OUT_W, OUT_H = 1080, 1920
 FACECAM_PANEL = (1080, 768)  # arriba
 GAME_PANEL = (1080, 1152)  # abajo
 SPLIT_PANEL = {2: (1080, 960), 3: (1080, 640)}
+REACT_PANELS = ((1080, 608), (1080, 1312))  # vídeo insertado (16:9) arriba, streamer abajo
+MAIN_FACE_H = 0.12  # personas «principales» (no caben dentro de un vídeo insertado)
+TINY_FACE = 0.3  # caras de menos de esta fracción de la mayor no cuentan para elegir el diseño
 
 
 @dataclass
@@ -67,6 +71,7 @@ class Plan:
     people: list[Person] = field(default_factory=list)
     facecam: Region | None = None
     window_w: float = 0.0
+    video: Region | None = None  # vídeo insertado detectado (diseño react)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -172,8 +177,25 @@ def split_regions(tracks: list[Track], src_w: int, src_h: int) -> list[Region]:
     return regs
 
 
+def _inside(b, r: Region) -> bool:
+    return r.x <= b.cx <= r.x + r.w and r.y <= b.cy <= r.y + r.h
+
+
+def video_panel_region(v: Region, src_w: int, src_h: int) -> Region:
+    """El mayor 16:9 dentro de la ventana detectada (centrado): si sobra algo de marco, se recorta."""
+    aspect = REACT_PANELS[0][0] / REACT_PANELS[0][1]
+    h = min(v.h, v.w * src_w / (aspect * src_h))
+    return region_with_aspect(v.x + v.w / 2, v.y + v.h / 2, h, aspect, src_w, src_h)
+
+
+def streamer_panel_region(b, src_w: int, src_h: int) -> Region:
+    h = min(1.0, max(0.6, b.h * 3.2))
+    return region_with_aspect(b.cx, b.cy + h * 0.18, h, REACT_PANELS[1][0] / REACT_PANELS[1][1], src_w, src_h)
+
+
 def plan_layout(frames: list[FrameDet], src_w: int, src_h: int, fps: float = 4.0,
-                tracking: Tracking | None = None, force: str | None = None, allow_facecam: bool = True) -> Plan:
+                tracking: Tracking | None = None, force: str | None = None, allow_facecam: bool = True,
+                activity=None) -> Plan:
     tracking = tracking or Tracking()
     n = len(frames)
     win = window_width(src_w, src_h)
@@ -182,13 +204,43 @@ def plan_layout(frames: list[FrameDet], src_w: int, src_h: int, fps: float = 4.0
     persons = [Person(t.id, t.kind, round(t.median_box().score, 2), round(t.presence(n), 2),
                       Region(*(lambda b: (b.x, b.y, b.w, b.h))(t.median_box()))) for t in people]
 
+    # Vídeo insertado (reacciones): solo con el clip completo. Se busca antes que la facecam: una cara
+    # pequeña y quieta dentro del vídeo (o un falso positivo en un decorado) no es la webcam del streamer.
+    video: Region | None = None
+    auto_react = False
+    main = [t for t in people if t.median_box().h >= MAIN_FACE_H]
+    if activity is not None and main and (allow_facecam or force == "react") and force not in ("facecam", "blur"):
+        from app.clipper.reframe.detector import find_window
+
+        # Zona de cada persona principal: cara ampliada y el cuerpo hacia abajo (gorra, manos, hombros).
+        avoid = [(b.x - b.w * 0.5, b.y - b.h * 0.6, b.x + b.w * 1.5, 1.0) for b in (t.median_box() for t in main)]
+        # Sin elegirlo a mano, debe verse alguna cara dentro del vídeo (si no, el chat podría pasar por vídeo).
+        need = None if force == "react" else [
+            (t.median_box().cx, t.median_box().cy) for t in tracks
+            if t.presence(n) >= 0.1 and t.median_box().h < MAIN_FACE_H]
+        found = find_window(activity, avoid, src_w, src_h, need) if need is None or need else None
+        if found:
+            video = Region(*found)
+            if force is None:
+                force, auto_react = "react", True
+
     cam_track = None
     if allow_facecam or force == "facecam":
-        cam_track = next((t for t in corner_tracks(tracks) if is_facecam(t, n)), None)
+        cams = [t for t in corner_tracks(tracks) if not (video and _inside(t.median_box(), video))]
+        cam_track = next((t for t in cams if is_facecam(t, n)), None)
+    if cam_track is not None and auto_react:
+        video, force = None, None  # partida con facecam: manda el diseño facecam de siempre
     cam_ids = set(cam_track.boxes) if cam_track else set()
     # Quien está dentro de la webcam no cuenta como persona del plano principal.
     others = [t for t in people if not (cam_track and _corner(t.median_box()) is not None
                                          and set(t.boxes) & cam_ids)]
+    if video:
+        # Las caras de dentro del vídeo se ven en su panel: no son personas del plano.
+        others = [t for t in others if not _inside(t.median_box(), video)]
+    if others:
+        # Las caras diminutas (público al fondo, una tele en el plano) se muestran pero no deciden el diseño.
+        big = max(t.median_box().h for t in others)
+        others = [t for t in others if t.median_box().h >= big * TINY_FACE]
 
     # Hablante activo (solo hay datos si speaker.annotate analizó el clip).
     from app.clipper.reframe.speaker import active_speakers
@@ -226,6 +278,13 @@ def plan_layout(frames: list[FrameDet], src_w: int, src_h: int, fps: float = 4.0
             else:
                 layout = "split2" if len(top) == 2 else "split3"  # hablan a la vez (o no se sabe)
 
+    if layout == "react":
+        streamer = next((t for t in others if t.median_box().h >= MAIN_FACE_H), others[0] if others else None)
+        if video is None or streamer is None:
+            return plan_layout(frames, src_w, src_h, fps, tracking, None, allow_facecam)
+        regions = [video_panel_region(video, src_w, src_h), streamer_panel_region(streamer.median_box(), src_w, src_h)]
+        return Plan("react", "Vídeo insertado en la emisión: vídeo arriba y streamer abajo", fps, regions=regions,
+                    people=persons, window_w=win, video=video)
     if layout == "speaker":
         ts = others or people
         if not ts:
@@ -303,11 +362,12 @@ MIN_SHOT_FRAMES = 3
 
 
 def plan_clip(frames: list[FrameDet], cuts: list[float], duration: float, src_w: int, src_h: int,
-              fps: float = 4.0, tracking: Tracking | None = None, force: str | None = None) -> ClipPlan:
-    """Planifica por plano. Si hay una facecam fija en todo el clip (gameplay), los cortes se
-    ignoran: en un juego los "cortes" son cambios de pantalla, no de cámara."""
-    whole = plan_layout(frames, src_w, src_h, fps, tracking, force)
-    if whole.layout == "facecam" or not cuts or force == "blur":
+              fps: float = 4.0, tracking: Tracking | None = None, force: str | None = None,
+              activity=None) -> ClipPlan:
+    """Planifica por plano. Si hay una facecam fija en todo el clip (gameplay) o un vídeo insertado
+    (reacciones), los cortes se ignoran: son cambios dentro de la pantalla o del vídeo, no de cámara."""
+    whole = plan_layout(frames, src_w, src_h, fps, tracking, force, activity=activity)
+    if whole.layout in ("facecam", "react") or not cuts or force == "blur":
         return ClipPlan([Shot(0.0, duration, whole)], src_w, src_h)
     bounds = [0.0, *[c for c in cuts if 0 < c < duration], duration]
     shots: list[Shot] = []
@@ -317,7 +377,7 @@ def plan_clip(frames: list[FrameDet], cuts: list[float], duration: float, src_w:
             prev = shots[-1].plan
             # Plano muy corto: reutilizar el diseño anterior (con la cámara quieta en su última posición).
             p = Plan(prev.layout, prev.reason, prev.path_fps, [prev.path[-1]] if prev.path else None,
-                     prev.regions, prev.people, prev.facecam, prev.window_w)
+                     prev.regions, prev.people, prev.facecam, prev.window_w, prev.video)
         else:
             # Dentro de un plano no se busca facecam: eso solo se decide con el clip completo.
             p = plan_layout(sub, src_w, src_h, fps, tracking, force, allow_facecam=False)

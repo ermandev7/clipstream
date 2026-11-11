@@ -20,8 +20,8 @@ ASSETS_DIR = DATA_DIR / "assets"
 # Licencias permitidas para archivos de assets/ (ver assets/licenses.json).
 ALLOWED_LICENSES = ["CC0", "CC-BY", "Apache-2.0", "MIT", "OFL", "Pixabay", "YouTube-AudioLibrary", "Public-Domain"]
 
-# clipper: solo avisar; stories (microseries): avisar y bloquear.
-RIGHTS_POLICY = {"stories": "block", "clipper": "warn"}
+# Derechos en los clips: solo se avisa, nunca se bloquea.
+RIGHTS_POLICY = {"clipper": "warn"}
 
 # Modelos en lista blanca (nombre -> licencia verificada).
 ALLOWED_MODELS = {
@@ -35,11 +35,6 @@ ALLOWED_MODELS = {
     "mediapipe/efficientdet_lite0": "Apache-2.0",
     "mediapipe/yamnet": "Apache-2.0",
     "mediapipe/face_landmarker": "Apache-2.0",
-    "kokoro/v1.0": "Apache-2.0",
-    "stabilityai/sdxl-base-1.0": "OpenRAIL++-M",  # uso comercial permitido con restricciones de uso
-    "bytedance/sdxl-lightning-4step": "OpenRAIL++-M",
-    "madebyollin/sdxl-vae-fp16-fix": "MIT",
-    "openai/clip-vit-large-patch14": "MIT",
 }
 
 # Límites de clip (segundos).
@@ -64,9 +59,6 @@ class Settings(BaseSettings):
 
     ffmpeg_bin: str = "ffmpeg"
     ffprobe_bin: str = "ffprobe"
-
-    # Microseries (Fase 3): desactivadas a petición del usuario. El código sigue en app/stories.
-    stories_enabled: bool = False
 
     vram_total_gb: float = 8.0
     live_buffer_minutes: int = 15

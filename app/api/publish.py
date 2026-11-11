@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from app.core import db
 from app.core.events import bus
-from app.publish import service, tiktok
+from app.publish import batch, service, tiktok
 
 router = APIRouter(prefix="/api/publish", tags=["publish"])
 
@@ -107,6 +107,63 @@ def tiktok_post(body: PostIn) -> dict:
         raise HTTPException(400, str(e)) from e
     except tiktok.TikTokError as e:
         raise HTTPException(409, str(e)) from e
+
+
+# ---- Tandas: N al día, uno cada X minutos ---------------------------------------------------------
+
+class PrefsIn(BaseModel):
+    per_day: int | None = None
+    interval_min: int | None = None
+    start: str | None = None
+
+
+@router.get("/prefs")
+def get_prefs() -> dict:
+    return batch.load_prefs()
+
+
+@router.put("/prefs")
+def put_prefs(body: PrefsIn) -> dict:
+    return batch.save_prefs(body.model_dump(exclude_none=True))
+
+
+@router.get("/tiktok/batch")
+def tiktok_next_batch(source_id: int | None = Query(default=None)) -> dict:
+    return batch.next_batch(source_id)
+
+
+class BatchItem(BaseModel):
+    clip_id: int
+    title: str = Field(default="", max_length=2200)
+    scheduled_at: float
+
+
+class BatchIn(BaseModel):
+    items: list[BatchItem] = Field(min_length=1, max_length=batch.PER_DAY_MAX)
+    privacy_level: str | None = None
+    allow_comment: bool = False
+    allow_duet: bool = False
+    allow_stitch: bool = False
+    commercial: bool = False
+    brand_organic: bool = False
+    brand_content: bool = False
+    is_aigc: bool = False
+    consent: bool = False
+
+
+@router.post("/tiktok/batch")
+def tiktok_batch(body: BatchIn) -> dict:
+    """Programa los clips que el usuario ha aprobado uno a uno en la tanda (cada uno con su texto y su hora)."""
+    common = body.model_dump(exclude={"items"})
+    created, errors = [], []
+    for it in body.items:
+        try:
+            created.append(service.create_post(it.clip_id, {**common, "title": it.title}, it.scheduled_at))
+        except service.PostError as e:
+            errors.append({"clip_id": it.clip_id, "error": str(e)})
+        except tiktok.TikTokError as e:
+            raise HTTPException(409, str(e)) from e
+    return {"created": created, "errors": errors}
 
 
 @router.get("/posts")

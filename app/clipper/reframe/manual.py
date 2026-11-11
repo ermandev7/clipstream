@@ -4,6 +4,7 @@ Cada caja indica qué zona de esa persona se ve. Según el diseño:
   follow/group  recorte 9:16 centrado en la caja (o en el centro de todas las incluidas)
   split2/3      un panel por caja (de izquierda a derecha)
   facecam       la primera caja es la webcam; la segunda (opcional) es la zona de juego
+  react         la primera caja es el vídeo insertado (arriba, 16:9); la segunda, el streamer (abajo)
   blur          plano general
 Coordenadas normalizadas sobre el área útil (sin bandas negras).
 """
@@ -12,10 +13,12 @@ from __future__ import annotations
 from app.clipper.reframe.planner import (
     FACECAM_PANEL,
     GAME_PANEL,
+    REACT_PANELS,
     SPLIT_PANEL,
     Plan,
     Region,
     region_with_aspect,
+    video_panel_region,
     window_width,
 )
 
@@ -58,6 +61,15 @@ def manual_plan(manual: dict, src_w: int, src_h: int, duration: float) -> dict:
         game = (_panel_region(ordered[1], GAME_PANEL[0] / GAME_PANEL[1], src_w, src_h) if len(ordered) > 1
                 else region_with_aspect(0.5, 0.5, 1.0, GAME_PANEL[0] / GAME_PANEL[1], src_w, src_h))
         plan.regions, plan.facecam = [cam, game], cam
+    elif layout == "react":
+        ordered = _included(manual)  # primero el vídeo, después el streamer
+        if len(ordered) < 2:
+            raise ValueError("Marca el vídeo insertado con una caja y al streamer con otra")
+        v = ordered[0]
+        video = Region(v["x"], v["y"], v["w"], v["h"])
+        plan.regions = [video_panel_region(video, src_w, src_h),
+                        _panel_region(ordered[1], REACT_PANELS[1][0] / REACT_PANELS[1][1], src_w, src_h)]
+        plan.video = video
     else:
         plan = Plan("blur", "Plano general", window_w=win)
 

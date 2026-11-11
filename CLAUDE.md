@@ -20,7 +20,7 @@ Especificación completa: `CLIPSTREAM_PROMPT.md`. Las decisiones ahí son defini
 - Frontend: React + Vite + TypeScript.
 - Empaquetado: PyInstaller + pywebview + Inno Setup. Modelos IA se descargan en el primer uso, no van en el .exe.
 - Whisper y LLM se cargan **por turnos** vía `app/core/gpu.py` (gestor de VRAM que serializa tareas pesadas).
-- Derechos: clips = **avisar, nunca bloquear**; microseries = **avisar y bloquear**.
+- Derechos: clips = **avisar, nunca bloquear**.
 - Solo recursos gratuitos con licencia comercial: `ALLOWED_LICENSES = ["CC0","CC-BY","Apache-2.0","MIT","OFL","Pixabay","YouTube-AudioLibrary"]`.
 - Prohibido: Ultralytics YOLO, FLUX.1 dev, HunyuanVideo, XTTS-v2, pesos F5-TTS, Wav2Lip, MusicGen, ACRCloud/AudD, Redis.
 - Acceso opcional desde el móvil en la misma WiFi.
@@ -46,7 +46,7 @@ Herramienta de edición profesional (estilo DaVinci/Premiere). Nada con aspecto 
 - Base 13 px; etiquetas de sección 11 px mayúsculas con letter-spacing.
 - Tablas compactas, inspectores etiqueta/valor, controles segmentados, pestañas con subrayado de acento.
 - Responsive: en móvil los paneles se apilan.
-- Cabecera 48 px: "ClipStream" · pestañas Fuentes | Editor | Recorte | Microseries | Exportar · derecha en mono "RTX 3060 · VRAM x / 8.0 GB" (dato real).
+- Cabecera 48 px: "ClipStream" · pestañas Fuentes | Editor | Recorte | Exportar · derecha en mono "RTX 3060 · VRAM x / 8.0 GB" (dato real).
 
 ## Entorno detectado (2026-11-09)
 - Windows 11 Pro 26200 · RTX 3060 8 GB · driver 610.88 · CUDA UMD 13.3 · sin CUDA toolkit (no hace falta: wheels traen runtime).
@@ -77,36 +77,10 @@ Pendiente: yt-dlp avisa de que falta runtime JS (deno); «Abrir ubicación…» 
 - `matplotlib` debe ir en el bundle: mediapipe lo importa al cargar.
 - Kick: sin chat (decisión del usuario: el WebSocket interno no oficial queda fuera). VOD por HLS público, directo con streamlink.
 
-## Fase 3 · microseries (2026-11-09)
-- Voz: Kokoro ONNX en CPU (velocidad 0,92 ≈ 2,8 palabras/s). Tiempos por palabra con Whisper alineados al texto exacto del guion.
-- Guion: el 7B escribe escenas cortas → segunda pasada «añade una o dos frases» (máx. 2) si < 165 palabras. Objetivo 60-90 s.
-- Imágenes: SDXL base + Lightning 4 pasos fusionada, 768×1344. UNet+VAE fijos en GPU, codificadores de texto en CPU fp32
-  (con enable_model_cpu_offload eran 15 s/imagen y picos de 7,9 GB; ahora 3,3 s y 6,3 GB reservados). Durante la difusión
-  se apartan los codificadores (si no, la pipeline pasa los embeddings a fp32). Prompts largos troceados (prompt_embed.py).
-- Guardián visual: CLIP L/14 en CPU, softmax entre famosos + genéricos + **señuelos** + descripción propia; bloquea si un
-  famoso ≥ 0,45. Sin señuelos, cualquier pez era «Nemo» y cualquier barbudo «Moisés». 3 semillas antes de bloquear.
-- Pendiente de empaquetar: torch no va en el .exe (excluido); descargarlo en el primer arranque como las DLL de CUDA.
-- GPL-3.0: phonemizer/espeak-ng (ver installer/THIRD_PARTY.md).
-
-- Montaje: Ken Burns con cv2.warpAffine subpíxel (zoompan tiembla) → NVENC; vídeo base común y una pasada por idioma
-  (voz, música con ducking, whoosh en cortes, −14 LUFS, ASS + etiqueta «Contenido generado con IA»). 72 s ES+EN en ~38 s.
-- Música: biblioteca vacía → bases propias CC0 por plantilla (app/shared/music/ambient.py, AAC ~1 MB). La serie puede elegir otra.
-- Informe de derechos por episodio: epNN_derechos.txt/.json junto a los MP4 y la descripción epNN_<lang>.txt.
-- Guion corto: 1.ª pasada «alarga todas» (una llamada) y, si sigue < 165 palabras, 2.ª escena a escena (24-32 palabras,
-  sin diálogos nuevos entre comillas: en bíblicas el guardián los bloquea). Episodios reales: 72 s y 88 s.
-- Pantalla Microseries: «Producir» encadena guion → imágenes → voz → montaje y se detiene ante un bloqueo; reescribir
-  el guion reinicia las demás fases. La UI se actualiza por WebSocket (eventos «series» y «episode»).
-- Instalador 0.4.0 (173 MB): el motor de imágenes (PyTorch cu128 + diffusers/transformers, 2,8 GB) NO va en el .exe;
-  componente «engine» lo descarga como ruedas exactas (installer/pylib_manifest.json, generado en la compilación por
-  installer/runtime_deps.py) a %LOCALAPPDATA%\ClipStream\runtime\pylib y se activa al final de sys.path (app/core/pylib.py).
-  Paquetes compartidos con la app van ENTEROS en el .exe (collect_all + metadata); biblioteca estándar completa
-  (torch importa pickletools, etc.). Con el motor instalado, Whisper usa el cuBLAS/cuDNN de torch/lib: no hace falta «cuda».
-- OJO: la consola Bash de Claude ve una vista aislada de %LOCALAPPDATA%; para probar la versión instalada usar PowerShell.
-- Prueba real empaquetada: descarga del motor ~2,5 min, serie + episodio de fábula ES/EN en 230 s.
-
 ## Rediseño UX y TikTok (2026-11-09)
-- Microseries DESACTIVADAS a petición del usuario (`settings.stories_enabled=False`): sin pestaña, sin componentes de
-  descarga y la API responde 404. El código sigue en app/stories y pages/Stories.tsx.
+- Microseries ELIMINADAS por decisión del usuario (2026-11-10): no queda código, componentes de descarga ni pestaña.
+  Las bases ya creadas conservan sus tablas antiguas (series, episodes…) sin uso; no se borran.
+- OJO: la consola Bash de Claude ve una vista aislada de %LOCALAPPDATA%; para probar la versión instalada usar PowerShell.
 - Progreso por pasos (components/ProgressSteps.tsx) con `sources.stage_progress` (% de la fase actual).
 - Clips: cola de render ordenada (pipeline._render_turn): uno cada vez, por fuente y segundo de inicio; la fuente
   muestra «Generando clip k/n» y el % total de la fase.
@@ -134,3 +108,15 @@ Pendiente: yt-dlp avisa de que falta runtime JS (deno); «Abrir ubicación…» 
 - Luego: probar conexión real desde ClipStream (Exportar → TikTok), grabar vídeo de demostración y enviar a revisión.
 - Instalador actual: build/installer/ClipStream-Setup-0.5.0.exe (efectos, pasos, TikTok). Sin probar: conexión real con
   TikTok y escuchar los 5 sonidos nuevos.
+
+## Publicación (GitHub público)
+- Repo: https://github.com/ermandev7/clipstream (MIT, «ClipStream contributors»). Releases con el instalador.
+- El historial público es **independiente** del local (que lleva el email personal del autor). Para publicar una versión:
+  1. Commit en local como siempre.
+  2. `C=$(git commit-tree "$(git rev-parse HEAD^{tree})" -p <último commit público> -m "...")` con
+     GIT_AUTHOR/COMMITTER = `ermandev7 <164884005+ermandev7@users.noreply.github.com>`.
+  3. `git -c credential.helper= -c 'credential.helper=!"/c/Program Files/GitHub CLI/gh.exe" auth git-credential' push https://github.com/ermandev7/clipstream.git "$C:refs/heads/main"`
+  4. `gh release create vX.Y.Z build/installer/ClipStream-Setup-X.Y.Z.exe --repo ermandev7/clipstream --notes-file ...`
+- El .exe publicado no debe llevar componentes GPL (phonemizer/espeak-ng, torch y diffusers excluidos en el spec por si
+  están en el venv de desarrollo). LICENSE debe quedarse como MIT puro (si se le añade texto, GitHub deja de reconocerla).
+- Capturas del README: película «Tears of Steel» (CC-BY) analizada en una instancia aparte; Edge sin ventana vía CDP.

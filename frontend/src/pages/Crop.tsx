@@ -13,14 +13,20 @@ const LAYOUTS: { id: Layout; label: string }[] = [
   { id: 'split2', label: 'Dividido ×2' },
   { id: 'split3', label: 'Dividido ×3' },
   { id: 'speaker', label: 'Quien habla' },
+  { id: 'react', label: 'Streamer + vídeo' },
 ]
 
 interface Props { clipId: number | null; onNavigate: (tab: 'sources' | 'editor', clipId?: number) => void }
 
 function boxesFromPlan(detail: ClipDetail, t: number): CropBox[] {
   const shot = detail.plan?.shots.find((s) => t >= s.start && t < s.end) ?? detail.plan?.shots[0]
-  const people = (shot?.people ?? []).slice(0, 3)
-  return people.map((p, i) => {
+  const v = shot?.video
+  const inVideo = (p: { box: { x: number; y: number; w: number; h: number } }) => !!v
+    && p.box.x + p.box.w / 2 >= v.x && p.box.x + p.box.w / 2 <= v.x + v.w && p.box.y + p.box.h / 2 >= v.y && p.box.y + p.box.h / 2 <= v.y + v.h
+  // Con vídeo insertado: primero su caja (arriba) y después las personas de fuera del vídeo.
+  const videoBox: CropBox[] = v ? [{ id: 'v', include: true, x: v.x, y: v.y, w: v.w, h: v.h }] : []
+  const people = (shot?.people ?? []).filter((p) => !inVideo(p)).slice(0, v ? 2 : 3)
+  return [...videoBox, ...people.map((p, i) => {
     // La caja manual es la zona visible de la persona: cara ampliada (hombros incluidos).
     const h = Math.min(0.95, p.box.h * 4)
     const w = Math.min(0.9, Math.max(p.box.w * 3, h * 0.5))
@@ -30,7 +36,7 @@ function boxesFromPlan(detail: ClipDetail, t: number): CropBox[] {
       id: `p${i}`, include: true,
       x: Math.min(Math.max(cx - w / 2, 0), 1 - w), y: Math.min(Math.max(cy - h / 2, 0), 1 - h), w, h,
     }
-  })
+  })]
 }
 
 function speakingLabel(s?: number): string {
@@ -136,7 +142,7 @@ export function CropPage({ clipId, onNavigate }: Props) {
   const save = async () => {
     setError(null)
     if (mode === 'manual' && !panels && effLayout !== 'blur' && effLayout !== 'speaker') {
-      setError('Ese diseño necesita más cajas incluidas (dividido ×2: 2, ×3: 3; facecam: la webcam primero).')
+      setError('Ese diseño necesita más cajas incluidas (dividido ×2: 2, ×3: 3; facecam: la webcam primero; streamer + vídeo: el vídeo primero y después el streamer).')
       return
     }
     setBusy(true)
@@ -161,6 +167,11 @@ export function CropPage({ clipId, onNavigate }: Props) {
       const inc = boxes.filter((b) => b.include)
       const k = inc.indexOf(boxes[i])
       return k === 0 ? 'Arriba (webcam)' : k === 1 ? 'Abajo (juego)' : 'Sin usar'
+    }
+    if (effLayout === 'react') {
+      const inc = boxes.filter((b) => b.include)
+      const k = inc.indexOf(boxes[i])
+      return k === 0 ? 'Arriba (vídeo)' : k === 1 ? 'Abajo (streamer)' : 'Sin usar'
     }
     if (effLayout === 'split2' || effLayout === 'split3') {
       const n = effLayout === 'split2' ? 2 : 3

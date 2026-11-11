@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 
 from app.clipper import common, live
@@ -31,6 +31,8 @@ class SourceIn(BaseModel):
     clean_previous: bool = False
     # Directo: además de los picos fuertes, el mejor momento de cada bloque de N segundos (0 = solo picos).
     live_every: Literal[0, 180, 300, 600] = 300
+    # Modo Automático: analiza, genera y deja la tanda de TikTok preparada para aprobar (nada se publica sin aprobar).
+    auto_publish: bool = False
 
 
 def _validate(body: SourceIn) -> None:
@@ -102,7 +104,7 @@ def create_source(body: SourceIn) -> dict:
         if not info["is_live"]:
             raise HTTPException(400, "Ese canal no está en directo ahora. Usa «Vídeo publicado».")
         sid = db.insert("sources", kind="live", platform=platform, url=url, title=info["title"], channel=info["channel"],
-                        status="pending")
+                        status="pending", auto_publish=int(body.auto_publish))
         try:
             live.start_live(sid, url, platform, body.live_every)
             mode = "solo momentos fuertes" if not body.live_every else f"un clip cada {body.live_every // 60} min como mínimo"
@@ -112,11 +114,12 @@ def create_source(body: SourceIn) -> dict:
             raise HTTPException(400, f"No se pudo iniciar la captura: {e}") from e
     elif body.kind == "vod":
         sid = db.insert("sources", kind="vod", platform=platform_of(body.url), url=body.url.strip(), status="pending",
-                        stage="En cola")
+                        stage="En cola", auto_publish=int(body.auto_publish))
         analyze_media_task(sid)
     else:
         p = Path(body.path)
-        sid = db.insert("sources", kind="local", path=str(p), title=p.stem, status="pending", stage="En cola")
+        sid = db.insert("sources", kind="local", path=str(p), title=p.stem, status="pending", stage="En cola",
+                        auto_publish=int(body.auto_publish))
         analyze_media_task(sid)
     log_event(sid, "Fuente creada")
     source_changed(sid)
@@ -194,6 +197,43 @@ def source_frame(source_id: int):
                 raise HTTPException(404, "Aún no hay imagen del directo") from None
             # Si falla, se sirve la imagen anterior en lugar de un error.
     return FileResponse(out, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
+
+
+LIVE_SEGMENTS = 6  # ~60 s de directo en la lista: suficiente para arrancar sin cortes
+
+
+@router.get("/{source_id}/live.m3u8")
+def live_playlist(source_id: int) -> Response:
+    """Lista HLS de los últimos trozos capturados: el monitor reproduce el directo fluido (con hls.js),
+    exactamente lo que ClipStream está analizando (unos 10-20 s por detrás de la emisión)."""
+    import math
+
+    s = live.session(source_id)
+    if not s:
+        raise HTTPException(404, "No está capturando")
+    segs = s.buffer.complete()[-LIVE_SEGMENTS:]
+    if not segs:
+        raise HTTPException(404, "Aún no hay vídeo")
+    lines = ["#EXTM3U", "#EXT-X-VERSION:3",
+             f"#EXT-X-TARGETDURATION:{math.ceil(max(x.duration for x in segs))}",
+             f"#EXT-X-MEDIA-SEQUENCE:{segs[0].index}"]
+    for x in segs:
+        lines += [f"#EXTINF:{x.duration:.3f},", f"seg/{x.path.name}"]
+    return Response("\n".join(lines) + "\n", media_type="application/vnd.apple.mpegurl",
+                    headers={"Cache-Control": "no-store"})
+
+
+@router.get("/{source_id}/seg/{name}")
+def live_segment(source_id: int, name: str):
+    from app.clipper.ingest.buffer import SEG_RE
+
+    s = live.session(source_id)
+    if not s or not SEG_RE.fullmatch(name):  # solo nombres seg_000123.ts: nada fuera del búfer
+        raise HTTPException(404)
+    p = s.buffer.dir / name
+    if not p.is_file():
+        raise HTTPException(404, "Ese trozo ya no está en el búfer")
+    return FileResponse(p, media_type="video/mp2t", headers={"Cache-Control": "no-store"})
 
 
 @router.post("/{source_id}/reprocess")

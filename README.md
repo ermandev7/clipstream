@@ -41,7 +41,8 @@ ningún servidor.
   del chat y una **IA local** (Qwen 2.5 7B vía Ollama) que puntúa cada candidato y explica por qué.
 - **Clips de 3 s a 3 min** cortados en frases completas, sin repetirse.
 - **Encuadre vertical automático:** sigue la cara de quien habla, pantalla dividida para 2 o 3 personas, *facecam +
-  juego*, o fondo desenfocado. Se puede ajustar a mano.
+  juego*, *streamer + vídeo* (en reacciones detecta el vídeo insertado en la emisión y lo pone arriba, con el
+  streamer abajo), o fondo desenfocado. Detecta también caras pequeñas. Se puede ajustar a mano.
 - **Subtítulos** palabra a palabra (español, inglés o ambos) con texto gancho al inicio.
 - **Efectos según el contenido:** zoom en el momento cumbre, temblor en gritos, destellos en aplausos, pulsos en risas,
   y **sonidos solo cuando el vídeo los pide** (aplausos, donaciones, frases de sorpresa o de fallo…).
@@ -120,9 +121,14 @@ Los clips se generan **de uno en uno**, en el orden del vídeo, y van apareciend
 momento de cada uno, aunque sea un directo tranquilo de conversación. Junto a «Iniciar captura» eliges el ritmo:
 un clip cada **3, 5 o 10 minutos**, o **solo momentos fuertes**. En el registro verás el resultado de cada bloque.
 Cuando el directo termina, se reprocesa entero en cuanto YouTube publica la repetición.
+El monitor reproduce el directo **en vídeo, fluido y con sonido** (empieza silenciado), unos segundos por detrás
+de la emisión: es exactamente lo que ClipStream está capturando y analizando.
 
 - **Empezar limpio:** al analizar un vídeo nuevo, ClipStream te pregunta si quieres borrar los anteriores con sus
   clips (o conservarlos, o recordar tu elección).
+- **Manual / Automático:** en *Manual* tú decides qué hacer con cada clip. En *Automático* pegas el link y
+  ClipStream lo hace todo (descarga, análisis, clips) y, al terminar, te presenta la **tanda de TikTok** ya
+  preparada: solo tienes que aprobar cada clip con un clic (TikTok exige revisar cada publicación).
 - **Espacio:** el botón de la barra muestra cuánto ocupa cada vídeo y permite borrar los que ya no necesitas. Tus
   archivos originales del PC y los clips que ya guardaste en una carpeta no se tocan nunca.
 - El panel derecho y el monitor se pueden **ampliar arrastrando** sus bordes (doble clic para restablecer).
@@ -134,7 +140,7 @@ Meme), la **música**, el título, la descripción, los hashtags y la portada. P
 aplicarlos. **Descargar** guarda el MP4 en la carpeta que elijas; **Exportar** te lleva a la pantalla Exportar.
 
 ### 3. Recorte
-Encuadre vertical a mano: cajas por persona sobre el vídeo original, diseño (seguir cara, dividido, facecam…),
+Encuadre vertical a mano: cajas por persona sobre el vídeo original, diseño (seguir cara, dividido, facecam, streamer + vídeo…),
 suavizado del seguimiento y vista previa 9:16. Se puede guardar como ajuste para todos los clips del mismo directo.
 
 ### 4. Exportar
@@ -152,6 +158,9 @@ Secret* en *Exportar → TikTok* (se guardan cifrados con la protección de dato
 - Permisos: `user.info.basic` y `video.publish` (Direct Post).
 - **Mientras TikTok no audite tu app, todo lo que publiques sale privado («Solo yo»)** y tu cuenta debe ser privada.
 - TikTok limita a unas 15 publicaciones al día por cuenta; ClipStream lo respeta.
+- **Publicar por tandas** (Exportar, o el modo Automático): los mejores clips sin publicar, *N al día* (5 por
+  defecto), uno cada *X* (1 h por defecto) desde la hora que elijas (18:00); los demás pasan a los días siguientes.
+  Apruebas cada clip de la tanda y puedes aprobar la siguiente en el momento. ClipStream debe estar abierto a esas horas.
 - Normas importantes de TikTok: no aprueban apps de uso personal ni las que copian contenido de otras plataformas.
 
 Guía paso a paso y valores para el formulario: [docs/tiktok/GUIA_REVISION.md](docs/tiktok/GUIA_REVISION.md) ·
@@ -229,10 +238,6 @@ installer/    PyInstaller, Inno Setup y avisos de terceros
 docs/         capturas, guía de TikTok y páginas legales
 tests/        tests automáticos
 ```
-
-Las **microseries** (historias de dominio público con IA, Fase 3 del proyecto) están en `app/stories` pero
-**desactivadas**. Se reactivan con `CLIPSTREAM_STORIES_ENABLED=true` e instalando el extra `.[stories]` (PyTorch,
-diffusers, Kokoro; ojo: la voz usa phonemizer/espeak-ng, que son GPL-3.0).
 
 ## Solución de problemas
 

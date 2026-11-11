@@ -452,4 +452,7 @@ def _maybe_finish_source(source_id: int) -> None:
     pending = db.query("SELECT COUNT(*) AS n FROM clips WHERE source_id=? AND status IN ('pending','rendering')", (source_id,))[0]["n"]
     if pending == 0:
         db.update("sources", source_id, status="done", stage="Terminado", stage_progress=1.0)
+        if src.get("auto_publish"):
+            n = db.query("SELECT COUNT(*) AS n FROM clips WHERE source_id=? AND status='ready'", (source_id,))[0]["n"]
+            log_event(source_id, f"Modo automático: {n} clips listos. Tanda de TikTok preparada: revísala y apruébala")
         source_changed(source_id)

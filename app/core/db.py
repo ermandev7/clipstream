@@ -80,66 +80,9 @@ CREATE TABLE IF NOT EXISTS channels (
     key TEXT PRIMARY KEY,              -- plataforma:canal
     permission TEXT DEFAULT 'unknown'  -- yes | no | program | unknown
 );
-
--- Microseries (Fase 3) ------------------------------------------------------
-CREATE TABLE IF NOT EXISTS series (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    template TEXT NOT NULL,            -- biblicas | mitologia | fabulas | leyendas | frutinovela
-    mode TEXT NOT NULL DEFAULT 'narrated',  -- narrated | dramatized (Fase 4)
-    languages TEXT DEFAULT '["es"]',
-    story_id TEXT,                     -- entrada del catálogo de dominio público (None en frutinovela)
-    synopsis TEXT DEFAULT '',
-    bible TEXT DEFAULT '{}',           -- estilo visual, tono, personajes clave
-    rights TEXT DEFAULT '{}',          -- resultado del guardián a nivel de serie
-    status TEXT NOT NULL DEFAULT 'draft',
-    created_at REAL NOT NULL,
-    updated_at REAL NOT NULL
-);
-CREATE TABLE IF NOT EXISTS characters (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    series_id INTEGER NOT NULL REFERENCES series(id) ON DELETE CASCADE,
-    name TEXT NOT NULL,
-    role TEXT DEFAULT '',
-    description TEXT DEFAULT '',
-    visual TEXT DEFAULT '',            -- descripción visual fija (consistencia entre imágenes)
-    voice TEXT DEFAULT '',
-    files TEXT DEFAULT '{}'
-);
-CREATE INDEX IF NOT EXISTS ix_characters_series ON characters(series_id);
-CREATE TABLE IF NOT EXISTS episodes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    series_id INTEGER NOT NULL REFERENCES series(id) ON DELETE CASCADE,
-    number INTEGER NOT NULL,
-    title TEXT DEFAULT '',
-    summary TEXT DEFAULT '',
-    status TEXT NOT NULL DEFAULT 'draft',   -- draft | scripting | script_ready | blocked | generating | ready | error
-    stage TEXT DEFAULT '',
-    phases TEXT DEFAULT '{}',          -- guion / personajes / imágenes / voz / montaje -> estado
-    rights TEXT DEFAULT '{}',          -- comprobaciones del guardián
-    files TEXT DEFAULT '{}',
-    error TEXT,
-    created_at REAL NOT NULL
-);
-CREATE INDEX IF NOT EXISTS ix_episodes_series ON episodes(series_id, number);
-CREATE TABLE IF NOT EXISTS scenes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    episode_id INTEGER NOT NULL REFERENCES episodes(id) ON DELETE CASCADE,
-    idx INTEGER NOT NULL,
-    narration_es TEXT DEFAULT '',
-    narration_en TEXT DEFAULT '',
-    image_prompt TEXT DEFAULT '',
-    characters TEXT DEFAULT '[]',
-    duration REAL DEFAULT 6,
-    status TEXT NOT NULL DEFAULT 'pending', -- pending | generating | review | approved | blocked
-    block_reason TEXT,
-    suggestion TEXT,
-    files TEXT DEFAULT '{}'
-);
-CREATE INDEX IF NOT EXISTS ix_scenes_episode ON scenes(episode_id, idx);
 """
 
-JSON_FIELDS = {"hashtags", "signals", "warnings", "files", "languages", "bible", "rights", "phases", "characters"}
+JSON_FIELDS = {"hashtags", "signals", "warnings", "files"}
 _local = threading.local()
 _init_lock = threading.Lock()
 _initialized = False
@@ -174,9 +117,9 @@ MIGRATIONS = [
     ("clips", "rendered", "TEXT DEFAULT '{}'"),       # ajustes con los que se hizo el último render
     ("clips", "meta", "TEXT DEFAULT '{}'"),           # título EN, descripciones, hashtags por plataforma
     ("sources", "parent_id", "INTEGER"),              # repetición: id del directo del que sale
-    ("characters", "kind", "TEXT DEFAULT ''"),        # qué es, en inglés (lion, young man): para SDXL y CLIP
     ("sources", "stage_progress", "REAL DEFAULT 0"),  # % de la fase actual (la interfaz lo muestra por pasos)
     ("clips", "hidden", "INTEGER DEFAULT 0"),         # quitado de la lista de Exportar (no se borra nada)
+    ("sources", "auto_publish", "INTEGER DEFAULT 0"), # modo Automático: al terminar, tanda lista para aprobar
 ]
 JSON_FIELDS |= {"settings", "preset", "rendered", "meta"}
 
@@ -206,10 +149,10 @@ def _enc(v: Any) -> Any:
 
 def insert(table: str, **fields) -> int:
     now = time.time()
-    if table in ("sources", "series"):
+    if table == "sources":
         fields.setdefault("created_at", now)
         fields.setdefault("updated_at", now)
-    elif table in ("clips", "episodes"):
+    elif table == "clips":
         fields.setdefault("created_at", now)
     cols = ", ".join(fields)
     qs = ", ".join("?" for _ in fields)
@@ -218,7 +161,7 @@ def insert(table: str, **fields) -> int:
 
 
 def update(table: str, id_: int, **fields) -> None:
-    if table in ("sources", "series"):
+    if table == "sources":
         fields["updated_at"] = time.time()
     sets = ", ".join(f"{k}=?" for k in fields)
     conn().execute(f"UPDATE {table} SET {sets} WHERE id=?", [*(_enc(v) for v in fields.values()), id_])

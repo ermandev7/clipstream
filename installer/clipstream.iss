@@ -8,7 +8,7 @@
 ; y NO se borran al desinstalar: reinstalar no obliga a descargar otra vez ~3 GB.
 
 #define AppName "ClipStream"
-#define AppVersion "0.6.1"
+#define AppVersion "0.6.2"
 #define AppExe "ClipStream.exe"
 
 [Setup]

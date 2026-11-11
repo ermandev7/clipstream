@@ -67,8 +67,47 @@ def viewers(slug: str) -> int | None:
         return None
 
 
-def vod_info(uuid: str) -> dict:
-    d = _get(f"/api/v1/video/{uuid}")
+OG_VIDEO_RE = re.compile(r'property="og:video" content="(https://[^"]+\.m3u8)"')
+OG_TITLE_RE = re.compile(r'property="og:title" content="([^"]*)"')
+
+
+def _vod_from_page(slug: str, uuid: str) -> dict:
+    """Enlaces nuevos de Kick (identificador 01…): la API antigua no los conoce (404), pero la página del vídeo
+    publica su HLS en og:video. Título, duración y canal se completan con la lista de vídeos del canal."""
+    import html as html_mod
+
+    r = httpx.get(f"https://kick.com/{slug}/videos/{uuid}", headers={**HEADERS, "Accept": "text/html"},
+                  timeout=20, follow_redirects=True)
+    if r.status_code == 404:
+        raise ValueError("Kick no encuentra ese vídeo")
+    r.raise_for_status()
+    m = OG_VIDEO_RE.search(r.text)
+    if not m:
+        raise ValueError("Ese vídeo de Kick no tiene fuente pública (¿privado o borrado?)")
+    src = html_mod.unescape(m.group(1))
+    t = OG_TITLE_RE.search(r.text)
+    title = html_mod.unescape(t.group(1)) if t else ""
+    title = re.sub(rf"\s*-\s*{re.escape(slug)} VOD on KICK$", "", title, flags=re.I) or "Vídeo de Kick"
+    info = {"source": src, "title": title, "channel": slug, "channel_id": None, "duration": 0.0,
+            "start_time": None, "uuid": uuid}
+    try:
+        for v in _get(f"/api/v2/channels/{slug}/videos"):
+            if v.get("source") == src:
+                info.update(title=v.get("session_title") or title, channel_id=v.get("channel_id"),
+                            duration=(v.get("duration") or 0) / 1000, start_time=v.get("start_time"))
+                break
+    except Exception:  # noqa: BLE001 - sin la lista, basta con la fuente
+        pass
+    return info
+
+
+def vod_info(uuid: str, slug: str | None = None) -> dict:
+    try:
+        d = _get(f"/api/v1/video/{uuid}")
+    except ValueError:
+        if not slug:
+            raise
+        return _vod_from_page(slug, uuid)
     ls = d.get("livestream") or {}
     src = d.get("source") or ls.get("source")
     if not src:
@@ -86,7 +125,7 @@ def download_vod(url: str, out_dir: Path, progress: ProgressCb | None = None) ->
     p = parse(url)
     if p["kind"] != "vod":
         raise ValueError("Ese link es un canal: para un directo usa «Directo»; para un vídeo, su link /videos/…")
-    info = vod_info(p["uuid"])
+    info = vod_info(p["uuid"], p.get("slug"))
     out_dir.mkdir(parents=True, exist_ok=True)
 
     def hook(d: dict) -> None:

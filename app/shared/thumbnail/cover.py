@@ -109,10 +109,11 @@ def text_position(plan: dict | None, frame: Path | None = None) -> str:
     """Dónde va el texto de la portada:
     - diseños apilados (facecam, dividido): en la unión de paneles;
     - resto: arriba, salvo que ahí haya una cara/cabeza en el fotograma; entonces abajo."""
-    from app.clipper.reframe.planner import FACECAM_PANEL, SPLIT_PANEL
+    from app.clipper.reframe.planner import FACECAM_PANEL, REACT_PANELS, SPLIT_PANEL
 
     layout = (plan or {}).get("layout")
-    seam = {"facecam": FACECAM_PANEL[1], "split2": SPLIT_PANEL[2][1], "split3": SPLIT_PANEL[3][1]}.get(layout)
+    seam = {"facecam": FACECAM_PANEL[1], "split2": SPLIT_PANEL[2][1], "split3": SPLIT_PANEL[3][1],
+            "react": REACT_PANELS[0][1]}.get(layout)
     if seam:
         return r"{\an5\pos(540,%d)}" % seam
     if frame is None or not frame.exists():

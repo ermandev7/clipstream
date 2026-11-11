@@ -22,7 +22,8 @@ from app.shared.subtitles.ass import STYLE_LABELS
 router = APIRouter(tags=["editor"])
 
 LAYOUT_LABELS = {"follow": "Seguir cara", "facecam": "Facecam + juego", "blur": "Desenfocado",
-                 "split2": "Dividido ×2", "split3": "Dividido ×3", "group": "Grupo", "speaker": "Quien habla"}
+                 "split2": "Dividido ×2", "split3": "Dividido ×3", "group": "Grupo", "speaker": "Quien habla",
+                 "react": "Streamer + vídeo"}
 
 
 def _clip_or_404(clip_id: int) -> dict:
@@ -121,7 +122,7 @@ def clip_detail(clip_id: int) -> dict:
 
 class CropIn(BaseModel):
     mode: Literal["auto", "manual"] = "auto"
-    layout: Literal["follow", "facecam", "blur", "split2", "split3", "group", "speaker"] | None = None
+    layout: Literal["follow", "facecam", "blur", "split2", "split3", "group", "speaker", "react"] | None = None
     boxes: list[dict] = Field(default_factory=list)
     tracking: dict = Field(default_factory=dict)
 

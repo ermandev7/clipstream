@@ -104,7 +104,7 @@ def _stack_layout(inp: str, out: str, tag: str, regions: list[dict], panels: lis
 
 
 def _shot_chain(inp: str, out: str, tag: str, shot: dict, spec: RenderSpec, fps: float, duration: float) -> list[str]:
-    from app.clipper.reframe.planner import FACECAM_PANEL, GAME_PANEL, SPLIT_PANEL
+    from app.clipper.reframe.planner import FACECAM_PANEL, GAME_PANEL, REACT_PANELS, SPLIT_PANEL
 
     layout = shot.get("layout", "blur")
     regions = shot.get("regions") or []
@@ -112,6 +112,8 @@ def _shot_chain(inp: str, out: str, tag: str, shot: dict, spec: RenderSpec, fps:
         return _follow_layout(inp, out, tag, shot, spec, fps, duration)
     if layout == "facecam" and len(regions) == 2:
         return _stack_layout(inp, out, tag, regions, [FACECAM_PANEL, GAME_PANEL], spec)
+    if layout == "react" and len(regions) == 2:
+        return _stack_layout(inp, out, tag, regions, list(REACT_PANELS), spec)
     if layout in ("split2", "split3") and len(regions) in (2, 3):
         return _stack_layout(inp, out, tag, regions, [SPLIT_PANEL[len(regions)]] * len(regions), spec)
     return _blur_layout(inp, out, tag)

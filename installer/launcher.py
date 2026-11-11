@@ -31,36 +31,6 @@ def _setup_logging() -> None:
 _crash_file = None
 
 
-def _selftest_stories(log) -> None:
-    """Microseries: voz (empaquetada) y, si están descargados, motor e imágenes."""
-    from app.stories import voices
-
-    if voices.available():
-        out = Path(os.environ.get("TEMP", ".")) / "clipstream_selftest_voz.wav"
-        dur = voices.synthesize("Prueba de voz de ClipStream.", "es", None, out)
-        log.info("Voz Kokoro OK (%.1f s)", dur)
-    else:
-        log.info("Voz Kokoro: modelo no descargado (se omite)")
-    from app.core import pylib
-
-    if not pylib.activate():
-        log.info("Motor de imágenes no descargado (se omite)")
-        return
-    import torch
-
-    log.info("PyTorch %s · CUDA %s", torch.__version__, torch.cuda.is_available())
-    from app.stories import images
-
-    if images.available():
-        out = Path(os.environ.get("TEMP", ".")) / "clipstream_selftest.png"
-        images.generate("an oil painting of a lighthouse at dusk", out, 1)
-        from app.shared.rights import image_guard
-
-        log.info("SDXL OK · revisión visual: %s", image_guard.check_image(out, "a lighthouse at dusk").message)
-    else:
-        log.info("Modelos de imagen no descargados (se omite)")
-
-
 def selftest() -> int:
     """ClipStream.exe --selftest : comprueba GPU/Whisper/ffmpeg sin abrir la ventana (escribe en el registro)."""
     log = logging.getLogger("clipstream.selftest")
@@ -83,10 +53,6 @@ def selftest() -> int:
         w.writeframes((np.sin(np.arange(32000) / 10) * 3000).astype(np.int16).tobytes())
     t = whisper.transcribe(wav)
     log.info("Whisper OK (%d palabras)", len(t.words))
-    from config.settings import settings
-
-    if settings.stories_enabled:
-        _selftest_stories(log)
     from app.core.gpu import gpu
 
     gpu.release()
@@ -97,9 +63,6 @@ def selftest() -> int:
 def main() -> None:
     _setup_logging()
     logging.getLogger("clipstream").info("ClipStream arrancando (%s)", sys.executable)
-    from app.core import pylib
-
-    pylib.activate()  # motor de imágenes descargado, si lo hay (antes de importar nada que lo use)
     if "--selftest" in sys.argv:
         sys.exit(selftest())
     try:

@@ -7,6 +7,7 @@ export const PANELS: Record<string, [number, number][]> = {
   facecam: [[1080, 768], [1080, 1152]],
   split2: [[1080, 960], [1080, 960]],
   split3: [[1080, 640], [1080, 640], [1080, 640]],
+  react: [[1080, 608], [1080, 1312]],
 }
 
 export function windowWidth(srcW: number, srcH: number): number {
@@ -55,6 +56,17 @@ export function manualPanels(layout: Layout, boxes: CropBox[], srcW: number, src
       ? regionWithAspect(inc[1].x + inc[1].w / 2, inc[1].y + inc[1].h / 2, Math.max(0.1, inc[1].h), gw / gh, srcW, srcH)
       : regionWithAspect(0.5, 0.5, 1, gw / gh, srcW, srcH)
     return [{ rect: cam, panel: [cw, ch] }, { rect: game, panel: [gw, gh] }]
+  }
+  if (layout === 'react') {
+    // Primera caja: el vídeo insertado (el mayor 16:9 dentro de ella); segunda: el streamer.
+    if (inc.length < 2) return null
+    const [[vw, vh], [sw, sh]] = PANELS.react
+    const v = inc[0]
+    const hv = Math.min(v.h, v.w * srcW / ((vw / vh) * srcH))
+    const video = regionWithAspect(v.x + v.w / 2, v.y + v.h / 2, hv, vw / vh, srcW, srcH)
+    const s = inc[1]
+    const streamer = regionWithAspect(s.x + s.w / 2, s.y + s.h / 2, Math.max(0.1, s.h), sw / sh, srcW, srcH)
+    return [{ rect: video, panel: [vw, vh] }, { rect: streamer, panel: [sw, sh] }]
   }
   return null
 }

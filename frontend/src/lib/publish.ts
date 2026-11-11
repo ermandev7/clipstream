@@ -81,6 +81,13 @@ export const POST_LABEL: Record<PostStatus, string> = {
   published: 'Publicado', failed: 'Error', cancelled: 'Cancelado',
 }
 
+/** Publicación por tandas: per_day vídeos al día, uno cada interval_min desde la hora start (HH:MM). */
+export interface PublishPrefs { per_day: number; interval_min: number; start: string }
+export interface BatchItem { clip: import('./api').Clip; scheduled_at: number }
+export interface NextBatch { prefs: PublishPrefs; items: BatchItem[]; remaining: number; daily_cap: number }
+export type BatchCommon = Omit<PostBody, 'clip_id' | 'title' | 'scheduled_at'>
+export const BATCH_INTERVALS = [30, 60, 90, 120, 180]
+
 export const publishApi = {
   status: () => req<TikTokStatus>('/api/publish/tiktok'),
   setKeys: (client_key: string, client_secret: string) =>
@@ -91,4 +98,9 @@ export const publishApi = {
   post: (body: PostBody) => req<Post>('/api/publish/tiktok/posts', { method: 'POST', body: JSON.stringify(body) }),
   posts: () => req<Post[]>('/api/publish/posts'),
   cancel: (id: number) => req<{ ok: boolean }>(`/api/publish/posts/${id}`, { method: 'DELETE' }),
+  prefs: () => req<PublishPrefs>('/api/publish/prefs'),
+  savePrefs: (p: Partial<PublishPrefs>) => req<PublishPrefs>('/api/publish/prefs', { method: 'PUT', body: JSON.stringify(p) }),
+  nextBatch: (sourceId?: number | null) => req<NextBatch>(`/api/publish/tiktok/batch${sourceId != null ? `?source_id=${sourceId}` : ''}`),
+  postBatch: (common: BatchCommon, items: { clip_id: number; title: string; scheduled_at: number }[]) =>
+    req<{ created: Post[]; errors: { clip_id: number; error: string }[] }>('/api/publish/tiktok/batch', { method: 'POST', body: JSON.stringify({ ...common, items }) }),
 }

@@ -76,17 +76,24 @@ probar y para el vídeo de demostración.
 Hasta 5 vídeos de 50 MB. Debe mostrar el flujo completo con la integración real (sandbox) y todos los
 permisos pedidos. Guion propuesto (grábalo con la Grabadora de Windows o OBS, en inglés o con subtítulos):
 
-1. Abrir ClipStream. Pestaña **Sources**: analizar un vídeo propio (archivo local). Se ven los pasos
-   con porcentaje y cómo se generan los clips de uno en uno.
-2. Pestaña **Export**: panel TikTok → **Connect with TikTok** → pantalla de autorización de TikTok →
+1. Abrir ClipStream. Pestaña **Fuentes**: pegar el link de un vídeo **propio** de tu canal de Kick
+   (kick.com/ermandev7/videos/…) y pulsar **Analizar**. Se ven los pasos con porcentaje y los clips
+   generándose de uno en uno (se puede cortar la espera en la edición).
+2. Pestaña **Exportar**: panel TikTok → **Conectar con TikTok** → pantalla de autorización de TikTok →
    aceptar → vuelve a ClipStream mostrando avatar y nombre (user.info.basic).
-3. Seleccionar un clip → **Publish to TikTok**. Enseñar la ventana: cuenta de destino, vista previa,
-   texto editable, «Who can see this video» sin valor por defecto (elegir una opción), comentarios /
-   dúo / stitch desmarcados, interruptor de contenido comercial con «Your brand» / «Branded content» y
+3. Seleccionar un clip → **Publicar en TikTok**. Enseñar la ventana: cuenta de destino, vista previa,
+   texto editable, «¿Quién puede ver este vídeo?» sin valor por defecto (elegir una opción), comentarios /
+   dúo / stitch desmarcados, interruptor de contenido comercial con «Tu marca» / «Contenido de marca» y
    sus avisos, declaración de Music Usage Confirmation, aviso de procesado.
-4. Pulsar **Publish**: estado «Uploading → Processing → Published» en ClipStream.
-5. Abrir el perfil de TikTok y enseñar el vídeo publicado (privado en sandbox).
-6. **Disconnect** en ClipStream (revoca el acceso).
+4. Pulsar **Publicar**: estado «Subiendo → Procesando en TikTok → Publicado» en ClipStream.
+5. **Publicar por tandas**: abrir la tanda, enseñar que cada clip tiene su hora, su texto y su casilla
+   «Apruebo publicar este clip»; aprobar dos y **Programar** (aparecen como «Programado» en el panel).
+6. Abrir el perfil de TikTok y enseñar el vídeo publicado (privado en sandbox).
+7. **Desconectar** en ClipStream (revoca el acceso).
+
+Grábalo tú (la Recortes de Windows graba pantalla con Win+Mayús+R), porque el inicio de sesión y la
+autorización en TikTok los tienes que hacer tú. Usa contenido grabado por ti: un vídeo de reacción a
+vídeos de terceros puede hacer pensar al revisor que la app copia contenido de otras plataformas.
 
 ## 5. Auditoría de Content Posting API (para publicar en público)
 

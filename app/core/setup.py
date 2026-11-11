@@ -74,14 +74,13 @@ def download(url: str, dest: Path, progress: Progress, label: str, start: float 
 # ---- CUDA --------------------------------------------------------------------
 
 def cuda_dirs() -> list[Path]:
-    """Carpetas con las DLL de CUDA: las descargadas, las que trae PyTorch (motor de imágenes: cuBLAS 12 y
-    cuDNN 9, compatibles con ctranslate2) y, en desarrollo, las del venv."""
-    from app.core.pylib import PYLIB
-
+    """Carpetas con las DLL de CUDA: las descargadas, las que dejó el antiguo motor de imágenes (versiones ≤ 0.6.1:
+    PyTorch trae cuBLAS 12 y cuDNN 9, compatibles con ctranslate2; así no hay que descargar 1,3 GB otra vez) y, en
+    desarrollo, las del venv."""
     dirs = [CUDA_DIR] if CUDA_DIR.exists() else []
-    torch_lib = PYLIB / "torch" / "lib"
-    if FROZEN and torch_lib.is_dir():
-        dirs.append(torch_lib)
+    legacy = RUNTIME_DIR / "pylib" / "torch" / "lib"
+    if FROZEN and legacy.is_dir():
+        dirs.append(legacy)
     if not FROZEN:
         for base in map(Path, sys.path):
             nv = base / "nvidia"
@@ -245,79 +244,6 @@ def install_llm(progress: Progress) -> None:
                 progress(0.0, d.get("status", ""))
 
 
-# ---- Voz (microseries) -------------------------------------------------------
-
-def check_voice() -> tuple[bool, str]:
-    from app.stories import voices
-
-    return (True, "Listo") if voices.available() else (False, "No descargado (solo para microseries)")
-
-
-def install_voice(progress: Progress) -> None:
-    from app.stories import voices
-
-    download(voices.MODEL_URL + voices.MODEL, voices.KOKORO_DIR / voices.MODEL, progress, "Kokoro", 0.0, 0.92)
-    download(voices.MODEL_URL + voices.VOICES_BIN, voices.KOKORO_DIR / voices.VOICES_BIN, progress, "Voces", 0.92, 0.08)
-
-
-# ---- Imágenes (microseries) ---------------------------------------------------
-
-HF = "https://huggingface.co/{repo}/resolve/main/{file}"
-IMAGE_FILES = [  # (repo, archivo, carpeta destino, MB aprox.)
-    ("stabilityai/stable-diffusion-xl-base-1.0", "unet/diffusion_pytorch_model.fp16.safetensors", "sdxl-base", 5140),
-    ("stabilityai/stable-diffusion-xl-base-1.0", "text_encoder_2/model.fp16.safetensors", "sdxl-base", 1390),
-    ("stabilityai/stable-diffusion-xl-base-1.0", "text_encoder/model.fp16.safetensors", "sdxl-base", 246),
-    *[("stabilityai/stable-diffusion-xl-base-1.0", f, "sdxl-base", 1) for f in (
-        "model_index.json", "LICENSE.md", "scheduler/scheduler_config.json", "unet/config.json",
-        "text_encoder/config.json", "text_encoder_2/config.json",
-        "tokenizer/merges.txt", "tokenizer/special_tokens_map.json", "tokenizer/tokenizer_config.json", "tokenizer/vocab.json",
-        "tokenizer_2/merges.txt", "tokenizer_2/special_tokens_map.json", "tokenizer_2/tokenizer_config.json",
-        "tokenizer_2/vocab.json")],
-    ("ByteDance/SDXL-Lightning", "sdxl_lightning_4step_lora.safetensors", "sdxl-lightning", 394),
-    ("madebyollin/sdxl-vae-fp16-fix", "diffusion_pytorch_model.safetensors", "sdxl-vae-fp16-fix", 335),
-    ("madebyollin/sdxl-vae-fp16-fix", "config.json", "sdxl-vae-fp16-fix", 1),
-    ("openai/clip-vit-large-patch14", "model.safetensors", "clip-vit-large-patch14", 1710),
-    *[("openai/clip-vit-large-patch14", f, "clip-vit-large-patch14", 1) for f in (
-        "config.json", "preprocessor_config.json", "tokenizer.json", "tokenizer_config.json", "vocab.json",
-        "merges.txt", "special_tokens_map.json")],
-]
-
-
-def check_engine() -> tuple[bool, str]:
-    from app.core import pylib
-
-    if pylib.activate():
-        return True, "Listo"
-    return False, "No descargado (solo para microseries)"
-
-
-def install_engine(progress: Progress) -> None:
-    from app.core import pylib
-
-    pylib.install(progress, download)
-
-
-def check_images() -> tuple[bool, str]:
-    from app.shared.rights import image_guard
-    from app.stories import images
-
-    if images.models_present() and image_guard.available():
-        return True, "Listo"
-    return False, "No descargado (solo para microseries)"
-
-
-def install_images(progress: Progress) -> None:
-    total = sum(mb for *_, mb in IMAGE_FILES)
-    done = 0
-    for repo, file, folder, mb in IMAGE_FILES:
-        dest = settings.models_dir / folder / file
-        if not dest.exists():
-            download(HF.format(repo=repo, file=file), dest, progress, Path(file).name, done / total, mb / total)
-        done += mb
-
-
-STORIES_COMPONENTS = {"voice", "engine", "images"}
-
 COMPONENTS = [
     Component("cuda", "Runtime de NVIDIA CUDA (cuBLAS, cuDNN)", 1300, True, check_cuda, install_cuda),
     Component("ffmpeg", "ffmpeg con NVENC", 100, True, check_ffmpeg, install_ffmpeg),
@@ -325,13 +251,7 @@ COMPONENTS = [
     Component("vision", "Detección de caras, pose y audio (MediaPipe)", 20, True, check_vision, install_vision),
     Component("ollama", "Ollama (motor del LLM)", 0, False, check_ollama, None, OLLAMA_DOWNLOAD),
     Component("llm", f"LLM · {settings.llm_model}", 4700, False, check_llm, install_llm),
-    Component("voice", "Voz narradora · Kokoro (microseries)", 350, False, check_voice, install_voice),
-    Component("engine", "Motor de imágenes · PyTorch CUDA (microseries)", 2790, False, check_engine, install_engine),
-    Component("images", "Imágenes · SDXL + Lightning + revisión CLIP (microseries)", 9300, False, check_images,
-              install_images),
 ]
-if not settings.stories_enabled:
-    COMPONENTS = [c for c in COMPONENTS if c.id not in STORIES_COMPONENTS]
 
 
 class SetupManager:

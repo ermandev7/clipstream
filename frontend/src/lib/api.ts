@@ -54,6 +54,7 @@ export interface Source {
   progress: number
   stage: string
   stage_progress?: number
+  auto_publish?: number
   duration: number
   was_live: number
   has_chat: number
@@ -119,7 +120,7 @@ export const api = {
   storage: () => req<StorageReport>('/api/sources/storage'),
   cleanup: (body: { ids?: number[]; keep?: number[] }) =>
     req<{ deleted: number; freed_bytes: number; skipped: number; errors?: string[] }>('/api/sources/cleanup', { method: 'POST', body: JSON.stringify(body) }),
-  createSource: (body: { kind: SourceKind; platform?: string; url?: string; path?: string; clean_previous?: boolean; live_every?: number }) =>
+  createSource: (body: { kind: SourceKind; platform?: string; url?: string; path?: string; clean_previous?: boolean; live_every?: number; auto_publish?: boolean }) =>
     req<Source>('/api/sources', { method: 'POST', body: JSON.stringify(body) }),
   stopSource: (id: number) => req<{ ok: boolean }>(`/api/sources/${id}/stop`, { method: 'POST' }),
   reprocess: (id: number) => req<Source>(`/api/sources/${id}/reprocess`, { method: 'POST' }),
@@ -225,7 +226,7 @@ export function clock(ts: number): string {
 
 // ---- Editor y Recorte ------------------------------------------------------
 
-export type Layout = 'follow' | 'facecam' | 'blur' | 'split2' | 'split3' | 'group' | 'speaker'
+export type Layout = 'follow' | 'facecam' | 'blur' | 'split2' | 'split3' | 'group' | 'speaker' | 'react'
 
 export interface CropBox { id?: string; x: number; y: number; w: number; h: number; include: boolean }
 export interface TrackingCfg { smoothing?: number; dead_zone?: number; max_speed?: number; cut?: boolean }
@@ -238,6 +239,8 @@ export interface PlanShot {
   reason: string
   people: { id: number; kind: string; confidence: number; presence: number; speaking_s?: number; box: { x: number; y: number; w: number; h: number } }[]
   window_w: number
+  /** Vídeo insertado detectado en la emisión (diseño react). */
+  video?: { x: number; y: number; w: number; h: number } | null
 }
 export interface ClipPlan { layout: Layout; src_w: number; src_h: number; crop: number[] | null; manual?: boolean; shots: PlanShot[] }
 

@@ -50,7 +50,18 @@ export function TikTokPanel({ onStatus }: { onStatus?: (s: TikTokStatus | null) 
     setEditKeys(false)
   })
 
-  if (!st) return null
+  if (!st) {
+    // Sin estado (servidor ocupado o error): se avisa en vez de esconder el panel.
+    return (
+      <div className="section">
+        <div className="section-head"><span className="label">TikTok</span></div>
+        <div className="section-body tiktok-panel">
+          {error ? <div className="notice error">No se pudo leer el estado de TikTok: {error}</div> : <div className="dim">Cargando…</div>}
+          {error && <button className="btn small" onClick={() => { setError(null); load() }}>Reintentar</button>}
+        </div>
+      </div>
+    )
+  }
   const showKeys = !st.configured || editKeys
   return (
     <div className="section">
@@ -60,7 +71,11 @@ export function TikTokPanel({ onStatus }: { onStatus?: (s: TikTokStatus | null) 
       <div className="section-body tiktok-panel">
         {showKeys && (
           <>
-            <div className="dim">Datos de tu app en <a href="https://developers.tiktok.com/apps" target="_blank" rel="noreferrer">developers.tiktok.com</a>. Se guardan cifrados en este PC.</div>
+            <ol className="dim tiktok-steps">
+              <li>Crea tu app en <a href="https://developers.tiktok.com/apps" target="_blank" rel="noreferrer">developers.tiktok.com</a> (Login Kit + Content Posting API).</li>
+              <li>Pega aquí su <b>Client Key</b> y <b>Client Secret</b> (para probar, los de la pestaña <i>Sandbox</i>). Se guardan cifrados en este PC.</li>
+              <li>Pulsa <b>Conectar con TikTok</b> y autoriza tu cuenta. Después, <b>Publicar en TikTok</b> o <b>Publicar por tandas</b>.</li>
+            </ol>
             <label className="field"><span className="label">Client Key</span>
               <input className="input mono" value={keyIn} onChange={(e) => setKeyIn(e.target.value)} autoComplete="off" spellCheck={false} /></label>
             <label className="field"><span className="label">Client Secret</span>

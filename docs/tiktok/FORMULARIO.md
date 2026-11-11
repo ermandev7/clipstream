@@ -20,16 +20,16 @@ Copia y pega. Los textos van en inglés porque la revisión la hace TikTok en in
 Desktop app for creators: turns your own streams and videos into vertical clips with subtitles and posts them to TikTok.
 ```
 
-## App review — explicación (máx. 1000; este texto tiene 932)
+## App review — explicación (máx. 1000; este texto tiene 926)
 
 ```
 ClipStream is a Windows desktop app for creators. It analyses the creator's own streams and videos locally and cuts them into vertical clips with subtitles.
 
 Login Kit (Desktop, PKCE, redirect to http://127.0.0.1): in the Export screen the creator presses "Connect with TikTok", authorizes in the browser and returns to the app.
 
-user.info.basic: we show the connected account (avatar and display name) so the creator always knows where a clip will be posted.
+user.info.basic: we show the connected account (avatar and nickname) so the creator always knows where clips will be posted.
 
-Content Posting API / video.publish (Direct Post): the creator selects a clip and opens the publish dialog. It queries creator_info, shows the account and a preview, lets them edit the caption, choose the privacy level manually (no default), allow comments/duet/stitch (off by default), disclose commercial content and accept the Music Usage Confirmation. Only after pressing Publish is the file uploaded with FILE_UPLOAD; the app then polls the post status and shows it.
+video.publish (Direct Post): the creator opens the publish dialog for one clip or for a batch of clips to post at set times. It queries creator_info and shows the account, a preview and an editable caption per clip, privacy chosen manually (no default), comments/duet/stitch off by default, commercial content disclosure and the Music Usage Confirmation. Each clip is approved individually; only then is it uploaded with FILE_UPLOAD at its time, and its status is shown.
 ```
 
 ## Products (Add products)

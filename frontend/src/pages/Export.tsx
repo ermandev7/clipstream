@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { BatchDialog } from '../components/BatchDialog'
 import { ClipModal } from '../components/ClipModal'
 import { PublishDialog } from '../components/PublishDialog'
 import { SideResizer } from '../components/Resizers'
@@ -26,6 +27,7 @@ export function ExportPage({ onOpenClip, focusClipId, onFocused }: { onOpenClip:
   // Cola de publicación: una ventana por clip (TikTok exige revisar y aceptar cada publicación).
   const [queue, setQueue] = useState<{ ids: number[]; i: number; next: number | null } | null>(null)
   const [showHidden, setShowHidden] = useState(false)
+  const [batchOpen, setBatchOpen] = useState(false)
   // Aviso tras guardar o quitar, con su acción (abrir carpeta / deshacer).
   const [notice, setNotice] = useState<{ text: string; action?: { label: string; run: () => void } } | null>(null)
 
@@ -131,6 +133,9 @@ export function ExportPage({ onOpenClip, focusClipId, onFocused }: { onOpenClip:
                 {INTERVALS.map((m) => <option key={m} value={m}>{m < 60 ? `${m} min` : `${m / 60} h`}</option>)}
               </select></label>
           )}
+          <button className="btn" disabled={!tiktok?.connected}
+            title={!tiktok?.connected ? 'Conecta tu cuenta de TikTok en el panel derecho' : 'Los mejores clips sin publicar: N al día, uno cada X; los demás, los días siguientes'}
+            onClick={() => setBatchOpen(true)}>Publicar por tandas</button>
           <button className="btn primary" disabled={!selectedReady.length || !tiktok?.connected}
             title={!tiktok?.connected ? 'Conecta tu cuenta de TikTok en el panel derecho' : 'Revisarás cada clip antes de publicarlo'}
             onClick={() => startPublish(selectedReady)}>Publicar en TikTok{selectedReady.length > 1 ? ` (${selectedReady.length})` : ''}</button>
@@ -232,6 +237,7 @@ export function ExportPage({ onOpenClip, focusClipId, onFocused }: { onOpenClip:
         </aside>
       </div>
       {open && <ClipModal clip={open} onClose={() => setOpen(null)} />}
+      {batchOpen && tiktok && <BatchDialog status={tiktok} onClose={() => setBatchOpen(false)} onScheduled={loadPosts} />}
       {queue && current && tiktok && (
         <PublishDialog key={current.id} clip={current} status={tiktok} index={queue.i} total={queue.ids.length}
           suggestedAt={queue.next} onDone={(at) => advance(at)} onClose={() => advance(undefined)} />

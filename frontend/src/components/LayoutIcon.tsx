@@ -32,6 +32,16 @@ export function LayoutIcon({ id, size = 36 }: { id: string; size?: number }) {
         </>
       )
       break
+    case 'react':
+      body = (
+        <>
+          <rect x="0" y="0" width={w} height="14" fill="#26262a" />
+          <path d="M11 4 L17 7 L11 10 Z" fill={F} />
+          <line x1="0" y1="14" x2={w} y2="14" stroke={L} />
+          <Head x={13.5} y={28} s={1.3} />
+        </>
+      )
+      break
     case 'split2':
       body = <><Head x={13.5} y={8} /><line x1="0" y1="24" x2={w} y2="24" stroke={L} /><Head x={13.5} y={32} /></>
       break

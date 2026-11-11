@@ -8,12 +8,12 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from config.settings import ROOT, settings
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import clips, editor, publish, setup, sources, stories, system, ws
+from app.api import clips, editor, publish, setup, sources, system, ws
 from app.core import db
 from app.core.events import bus
 
@@ -73,13 +73,6 @@ app.include_router(clips.router)
 app.include_router(editor.router)
 app.include_router(setup.router)
 app.include_router(publish.router)
-def _stories_enabled() -> None:
-    """Microseries desactivadas: la API existe pero responde 404 (se reactivan con CLIPSTREAM_STORIES_ENABLED=1)."""
-    if not settings.stories_enabled:
-        raise HTTPException(404, "Las microseries están desactivadas")
-
-
-app.include_router(stories.router, dependencies=[Depends(_stories_enabled)])
 app.include_router(system.router)
 app.include_router(ws.router)
 
